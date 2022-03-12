@@ -5,8 +5,6 @@
 
 (in-package :sdl2-opengl)
 
-(defconstant *screen-width* 640)
-(defconstant *screen-height* 480)
 
 (defun debug-log (msg &rest args)
   "Output and flush MSG to STDOUT with arguments ARGS"
@@ -17,6 +15,7 @@
 
 (defun init-gl ()
   (gl:enable :depth-test)
+  (gl:depth-func :always)
   (gl:viewport 0 0 800 600)
   (gl:matrix-mode :projection)
   (gl:ortho -2 2 -2 2 -2 2)
@@ -28,17 +27,15 @@
   (gl:load-identity)
   (gl:rotate theta 0.0 0.0 1.0)
   (gl:begin :triangles)
-  (gl:color 1.0 0.0 0.0)
+  (gl:color 1.0 0.0 1.0)
   (gl:vertex -0.5 -0.5 -2.0)
   (gl:color 1.0 1.0 0.0)
   (gl:vertex 0.5 -0.5 -2.0)
   (gl:color 0.0 0.0 1.0)
   (gl:vertex 0.0 0.5 -2.0)
   (gl:end)
-  (gl:flush))
-
-  
-
+  (gl:flush)
+  )
 
 (defun main ()
   (sdl2:with-init (:everything)
@@ -51,6 +48,9 @@
         (let ((theta 0))
           (sdl2:gl-make-current window gl-context)
           (init-gl)
+          ;;(sdl2:gl-set-swap-interval 0)
+          ;;(princ (sdl2:gl-get-swap-interval))
+          (finish-output)
           (sdl2:with-event-loop (:method :poll)
             (:idle ()
              (progn
@@ -59,6 +59,8 @@
                (sdl2:gl-swap-window window)
                ))
             (:quit () t)))))))
+
+
 (main)
 
 
