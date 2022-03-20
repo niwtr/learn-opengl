@@ -12,6 +12,7 @@
                 :components
                 ((:file "main")
                  (:file "utils")
+		 (:file "opengl-utils")
 		 (:file "01")
                  (:file "02")
                  (:file "03")
@@ -20,6 +21,7 @@
 		 (:file "06")
 		 (:file "07")
                  (:file "opengl")
+		 (:file "opengl-shader")
 		 )))
   :description ""
   :in-order-to ((test-op (test-op "learn-opengl/tests"))))
