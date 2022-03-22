@@ -24,17 +24,20 @@
    #(0 1 2 2 3 0))
 
   (setf *shader* (make-shader
-		  "#version 330 core
+		  "
+#version 330 core
 layout(location=0) in vec4 position;
 void main() {
 gl_Position = position;
-}"
-		  "#version 330 core
+}
+" "
+#version 330 core
 layout(location=0) out vec4 color;
 uniform vec4 u_Color;
 void main() {
 color = u_Color;
-}"))
+}
+"))
   (gl-unbind 'vertex-array)
   (gl-unbind 'vertex-buffer)
   (gl-unbind 'shader)
@@ -53,29 +56,30 @@ color = u_Color;
     (sdl2:with-window (window :flags '(:shown :opengl))
       (sdl2:with-gl-context (gl-context window)
         (sdl2:gl-make-current window gl-context)
-        
+        (sdl2:gl-set-swap-interval 0)
         ;; Clear to blue
         (gl:clear-color 0.0 0.0 1.0 1.0)
        
         (declare-shader)
 	;; NOTE the declare-shader creates a context,
 	;; including buffer and vertex array.
-        (sdl2:with-event-loop (:method :poll)
-          (:idle ()
-           (progn
-             (gl:clear :color-buffer-bit)
-	     (gl-bind *vao*)
-	     (gl-bind *shader*)
-	     (gl:uniformf
-	      (gl:get-uniform-location
-			   (gl:get-integer :current-program) "u_Color")
-	      rnd rnd rnd rnd)
-	     (%gl:draw-elements :triangles 6 :unsigned-int 0)
-	     ;;(gl:draw-arrays :triangles 0 6)
-             (gl:flush)
-             (sdl2:gl-swap-window window)))
-          (:quit () t))))))
-
+	(let ((red 0.0))
+          (sdl2:with-event-loop (:method :poll)
+            (:idle ()
+		   (progn
+		     (gl:clear :color-buffer-bit)
+		     (gl-bind *vao*)
+		     (gl-bind *shader*)
+		     (gl:uniformf
+		      (gl:get-uniform-location
+		       (gl:get-integer :current-program) "u_Color")
+		      red 0.0 0.0 1.0)
+		     (%gl:draw-elements :triangles 6 :unsigned-int 0)
+		     ;;(gl:draw-arrays :triangles 0 6)
+		     (gl:flush)
+		     (setf red (if (>= red 1.0) (+ 0.01 (1- red)) (+ 0.01 red)))
+		     (sdl2:gl-swap-window window)))
+            (:quit () t)))))))
 (main)
 
 
@@ -85,7 +89,6 @@ color = u_Color;
   (setf *vao* (gl:gen-vertex-array))
   (gl:bind-vertex-array *vao*)
   ;; create buffer objects
-
 
   (make-vertex-buffer #(-0.5 -0.5
 			0.5 -0.5
