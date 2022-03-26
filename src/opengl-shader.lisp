@@ -64,6 +64,10 @@ color = texColor;
             sdl2-ffi:+sdl-minor-version+
             sdl2-ffi:+sdl-patchlevel+)
     (sdl2:with-window (window :flags '(:shown :opengl))
+      ;; on windows there's a bug with sdl window showing.
+      ;; see https://github.com/lispgames/cl-sdl2/issues/23.
+      (sdl2:hide-window window)
+      (sdl2:show-window window)
       (sdl2:with-gl-context (gl-context window)
         (sdl2:gl-make-current window gl-context)
         (sdl2:gl-set-swap-interval 1)
@@ -96,8 +100,6 @@ color = texColor;
 		     (gl:flush)
 		     (sdl2:gl-swap-window window)))
             (:quit () t)))))))
-
-(main)
 
 
 (defun declare-shader1 ()
