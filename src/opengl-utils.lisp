@@ -1,5 +1,6 @@
 (defpackage :opengl-utils
   (:use cl)
+  (:import-from :learn-opengl-utils asset)
   (:export with-program
 	   send-lisp-array-to-buffer-data
 	   make-program-from-shader-src
@@ -14,6 +15,8 @@
 	   add-buffer
 	   make-vertex-array
 	   make-shader
+	   uniform-loc
+	   make-texture
 	   ))
 
 (in-package :opengl-utils)
@@ -89,16 +92,14 @@
 (defmethod gl-unbind ((gl-object gl-buffer))
   (gl:bind-buffer (gl-buffer-type gl-object) 0))
 
-(defmethod gl-unbind ((symb symbol))
-  (declare (ignore symb)))
 (defmacro defunbind (eql-symbol &body body)
   ;; TODO gensym
-  `(defmethod gl-unbind ((symb (eql (quote ,eql-symbol))))
+  `(defmethod gl-unbind ((symb (eql ,eql-symbol)))
      (declare (ignore symb))
      ,@body))
 
-(defunbind vertex-buffer (gl:bind-buffer :array-buffer 0))
-(defunbind index-buffer (gl:bind-buffer :element-array-buffer 0))
+(defunbind :vertex-buffer (gl:bind-buffer :array-buffer 0))
+(defunbind :index-buffer (gl:bind-buffer :element-array-buffer 0))
 
 
 (defmethod make-index-buffer ((data array))
@@ -147,7 +148,7 @@
 (defmethod gl-unbind ((vao vertex-array))
   (declare (ignore vao))
   (gl:bind-vertex-array 0))
-(defunbind vertex-array (gl:bind-vertex-array 0))
+(defunbind :vertex-array (gl:bind-vertex-array 0))
 
 (defmethod add-buffer ((target-vao vertex-array)
 		       (vb vertex-buffer)
@@ -185,7 +186,7 @@
 (defmethod gl-unbind ((s shader))
   (declare (ignore s))
   (gl:use-program 0))
-(defunbind shader (gl:use-program 0))
+(defunbind :shader (gl:use-program 0))
 
 (defmethod make-shader (v-src f-src)
   (let* ((v-shader (gl:create-shader :vertex-shader))
@@ -206,4 +207,46 @@
     (gl:use-program program)
     obj))
 
+(defmethod uniform-loc ((s shader) (target string))
+  (gl:get-uniform-location (id s) target))
+
+(defclass texture (gl-object)
+  (
+   (filepath :initarg :path :initform nil :type pathname :accessor path)
+   (local-buffer :initarg :local-buffer :initform nil :accessor local-buffer)
+   (width :initarg :width :initform 0 :accessor width)
+   (height :initarg :height :initform 0 :accessor height)
+   (bits-per-pixel :initarg :bpp :initform 0 :accessor bpp)))
+
+(defmethod gl-bind ((tex texture))
+  (gl:active-texture :texture0) ;; TODO add more options.
+  (gl:bind-texture :texture-2d (id tex)))
+(defmethod gl-unbind ((tex texture))
+  (declare (ignore tex))
+  (gl:bind-texture :texture-2d 0))
+(defunbind :texture (gl:bind-texture :texture-2d 0))
+
+
+(defmethod make-texture (path)
+  (pngload:with-png-in-static-vector (png (asset (pathname path)) :decode t :flip-y t)
+    (let* ((data-pointer (static-vectors:static-vector-pointer (pngload:data png)))
+	   (width (pngload:width png))
+	   (height (pngload:height png))
+	   (bpp (pngload:bit-depth png))
+	   (tex-id (gl:gen-texture))
+	   (obj (make-instance 'texture
+			       :id tex-id
+			       :path path
+			       :local-buffer png
+			       :width width
+			       :height height
+			       :bpp bpp)))
+      (gl:bind-texture :texture-2d tex-id)
+      (gl:tex-parameter :texture-2d :texture-min-filter :linear)
+      (gl:tex-parameter :texture-2d :texture-mag-filter :linear)
+      (gl:tex-parameter :texture-2d :texture-wrap-s :clamp-to-edge)
+      (gl:tex-parameter :texture-2d :texture-wrap-t :clamp-to-edge)
+      (gl:tex-image-2d :texture-2d 0 :RGBA8 width height 0 :RGBA :unsigned-byte data-pointer)
+      (gl-unbind obj)
+      obj)))
 

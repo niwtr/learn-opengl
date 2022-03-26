@@ -7,6 +7,8 @@
                :cl-glut
                :sdl2
 	       :sdl2-image
+	       :pngload ;; load png for texture rendering.
+	       :static-vectors
                )
   :components ((:module "src"
                 :components
