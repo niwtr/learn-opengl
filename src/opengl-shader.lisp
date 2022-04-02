@@ -75,10 +75,8 @@ color = mix(texture(u_Texture_1, v_TexCoord), texture(u_Texture_2, v_TexCoord), 
   (active-texture 1)
   (gl-bind (second *textures*))
   
-  
-  (gl-bind *vao*)
   (gl-bind *shader*)
-
+  (gl-bind *vao*)
   ;; (gl:uniformf
   ;;  (gl:get-uniform-location
   ;;   (gl:get-integer :current-program) "u_Color")
@@ -90,9 +88,6 @@ color = mix(texture(u_Texture_1, v_TexCoord), texture(u_Texture_2, v_TexCoord), 
   ;;(gl:draw-arrays :triangles 0 6)
   (gl:flush)
   (sdl2:gl-swap-window window))
-
-  
-
 
 (defun main ()
   (sdl2:with-init (:everything)
