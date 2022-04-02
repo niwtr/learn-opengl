@@ -22,7 +22,7 @@
 				      0.5 -0.5 0.0 1.0 0.0 1.0 0.0
 				      0.5 0.5 0.0 0.0 1.0 1.0 1.0
 				      -0.5 0.5 1.0 1.0 0.0 0.0 1.0))
-		layout))  
+		layout))
   (make-index-buffer
      #(0 1 2 2 3 0))  
 
@@ -37,7 +37,7 @@ out vec2 v_TexCoord;
 void main() {
 gl_Position = position;
 v_TexCoord = texCoord;
-v_Color = vec4(color, 1.0); // alpha channel is one!
+v_Color = vec4(color, 0.0);
 }
 " "
 #version 330 core
@@ -47,8 +47,7 @@ layout(location=0) out vec4 color;
 uniform sampler2D u_Texture_1;
 uniform sampler2D u_Texture_2;
 void main() {
-color = mix(texture(u_Texture_1, v_TexCoord), texture(u_Texture_2, v_TexCoord), 0.5);
-// color = texture(u_Texture_1, v_TexCoord) * v_Color;
+color = texture(u_Texture_1, v_TexCoord);
 }
 "))
 
@@ -66,6 +65,7 @@ color = mix(texture(u_Texture_1, v_TexCoord), texture(u_Texture_2, v_TexCoord), 
   )
 
 (define-symbol-macro rnd (random 1.0))
+
 
 (defun render-main (window)
   (gl:clear :color-buffer-bit)
@@ -117,8 +117,8 @@ color = mix(texture(u_Texture_1, v_TexCoord), texture(u_Texture_2, v_TexCoord), 
             (:idle ()
 		   (render-main window))
             (:quit () t)))))))
-(main)
 
+(main)
 (defun declare-shader1 ()
   ;; create vertex array
   (setf *vao* (gl:gen-vertex-array))
