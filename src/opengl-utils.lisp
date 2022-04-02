@@ -17,6 +17,7 @@
 	   make-shader
 	   uniform-loc
 	   make-texture
+	   active-texture
 	   ))
 
 (in-package :opengl-utils)
@@ -218,8 +219,34 @@
    (height :initarg :height :initform 0 :accessor height)
    (bits-per-pixel :initarg :bpp :initform 0 :accessor bpp)))
 
+(defparameter *texture-keywords*
+  #(
+    :texture0
+    :texture1
+    :texture2
+    :texture3
+    :texture4
+    :texture5
+    :texture6
+    :texture7
+    :texture8
+    :texture9
+    :texture10
+    :texture11
+    :texture12
+    :texture13
+    :texture14
+    :texture15
+    ))
+
+
+(defun get-texture-keyword (n)
+  (aref *texture-keywords* n))
+
+(defmethod active-texture (n)
+  (gl:active-texture (get-texture-keyword n)))
+
 (defmethod gl-bind ((tex texture))
-  (gl:active-texture :texture0) ;; TODO add more options.
   (gl:bind-texture :texture-2d (id tex)))
 (defmethod gl-unbind ((tex texture))
   (declare (ignore tex))
@@ -246,6 +273,7 @@
       (gl:tex-parameter :texture-2d :texture-mag-filter :linear)
       (gl:tex-parameter :texture-2d :texture-wrap-s :clamp-to-edge)
       (gl:tex-parameter :texture-2d :texture-wrap-t :clamp-to-edge)
+      ;; the second param is `level`, the level-of-detail number.
       (gl:tex-image-2d :texture-2d 0 :RGBA8 width height 0 :RGBA :unsigned-byte data-pointer)
       (gl-unbind obj)
       obj)))

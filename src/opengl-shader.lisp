@@ -7,46 +7,57 @@
 ;; vertex array objects
 (defparameter *vao* nil)
 (defparameter *shader* nil)
+(defparameter *textures* '())
+
 (defun declare-shader ()
   ;; create vertex array
   (setf *vao* (make-vertex-array))
 
   (with-vertex-buffer-layout layout
     (add-to-layout layout :float 2) ;; rectangle vertex positions
+    (add-to-layout layout :float 3) ;; rectangle vertex colors
     (add-to-layout layout :float 2) ;; texture coordinates
     (add-buffer *vao*
-		(make-vertex-buffer #(-0.5 -0.5 0.0 0.0
-				      0.5 -0.5 1.0 0.0
-				      0.5 0.5 1.0 1.0
-				      -0.5 0.5 0.0 1.0))
-		layout))
-  
+		(make-vertex-buffer #(-0.5 -0.5 1.0 0.0 0.0 0.0 0.0
+				      0.5 -0.5 0.0 1.0 0.0 1.0 0.0
+				      0.5 0.5 0.0 0.0 1.0 1.0 1.0
+				      -0.5 0.5 1.0 1.0 0.0 0.0 1.0))
+		layout))  
   (make-index-buffer
      #(0 1 2 2 3 0))  
-
 
   (setf *shader* (make-shader
 		  "
 #version 330 core
 layout(location=0) in vec4 position;
-layout(location=1) in vec2 texCoord;
+layout(location=1) in vec3 color;
+layout(location=2) in vec2 texCoord;
+out vec4 v_Color;
 out vec2 v_TexCoord;
 void main() {
 gl_Position = position;
 v_TexCoord = texCoord;
+v_Color = vec4(color, 1.0); // alpha channel is one!
 }
 " "
 #version 330 core
+in vec4 v_Color;
 in vec2 v_TexCoord;
 layout(location=0) out vec4 color;
-uniform sampler2D u_Texture;
+uniform sampler2D u_Texture_1;
+uniform sampler2D u_Texture_2;
 void main() {
-vec4 texColor = texture(u_Texture, v_TexCoord);
-color = texColor;
+color = mix(texture(u_Texture_1, v_TexCoord), texture(u_Texture_2, v_TexCoord), 0.5);
+// color = texture(u_Texture_1, v_TexCoord) * v_Color;
 }
 "))
-  (gl-bind (make-texture "gold-dollar.png"))
-  (gl:uniformi (uniform-loc *shader* "u_Texture") 0)
+
+  (push (make-texture "wall.png") *textures*)
+  (push (make-texture "gold-dollar.png") *textures*)
+
+  (gl:uniformi (uniform-loc *shader* "u_Texture_1") 0)
+  (gl:uniformi (uniform-loc *shader* "u_Texture_2") 1)
+  
 
   (gl-unbind :vertex-array)
   (gl-unbind :vertex-buffer)
@@ -55,6 +66,32 @@ color = texColor;
   )
 
 (define-symbol-macro rnd (random 1.0))
+
+(defun render-main (window)
+  (gl:clear :color-buffer-bit)
+
+  (active-texture 0)
+  (gl-bind (first *textures*))
+  (active-texture 1)
+  (gl-bind (second *textures*))
+  
+  
+  (gl-bind *vao*)
+  (gl-bind *shader*)
+
+  ;; (gl:uniformf
+  ;;  (gl:get-uniform-location
+  ;;   (gl:get-integer :current-program) "u_Color")
+  ;;  red 0.0 0.0 1.0)
+
+
+  (%gl:draw-elements :triangles 6 :unsigned-int 0)
+
+  ;;(gl:draw-arrays :triangles 0 6)
+  (gl:flush)
+  (sdl2:gl-swap-window window))
+
+  
 
 
 (defun main ()
@@ -83,24 +120,9 @@ color = texColor;
 	  (declare (ignore red))
           (sdl2:with-event-loop (:method :poll)
             (:idle ()
-		   (progn
-		     (gl:clear :color-buffer-bit)
-		     (gl-bind *vao*)
-		     (gl-bind *shader*)
-
-		     ;; (gl:uniformf
-		     ;;  (gl:get-uniform-location
-		     ;;   (gl:get-integer :current-program) "u_Color")
-		     ;;  red 0.0 0.0 1.0)
-
-
-		     (%gl:draw-elements :triangles 6 :unsigned-int 0)
-
-		     ;;(gl:draw-arrays :triangles 0 6)
-		     (gl:flush)
-		     (sdl2:gl-swap-window window)))
+		   (render-main window))
             (:quit () t)))))))
-
+(main)
 
 (defun declare-shader1 ()
   ;; create vertex array
