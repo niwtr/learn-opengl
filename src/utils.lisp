@@ -1,6 +1,6 @@
 (defpackage :learn-opengl-utils
   (:use cl)
-  (:export asset load-image)
+  (:export asset load-image symb mkstr flatten)
   )
 (in-package :learn-opengl-utils)
 (defun asset (pathname)
@@ -21,4 +21,11 @@ interfere with your editor filename completion."
   (let ((new-surface (sdl2:convert-surface surface format)))
     (sdl2:free-surface surface)
     new-surface))
+
+(eval-when (:compile-toplevel :execute :load-toplevel)
+  (defun mkstr (&rest args)
+    (with-output-to-string (s)
+      (dolist (a args) (princ a s))))
+  (defun symb (&rest args)
+    (values (intern (apply #'mkstr args)))))
 

@@ -4,93 +4,119 @@
 
 (in-package :sdl2-opengl-shader)
 
-;; vertex array objects
-(defparameter *vao* nil)
-(defparameter *shader* nil)
-(defparameter *textures* '())
+(defparameter *quad* nil)
+(defparameter *textures* nil)
+
 
 (defun declare-shader ()
-  ;; create vertex array
-  (setf *vao* (make-vertex-array))
 
-  (with-vertex-buffer-layout layout
-    (add-to-layout layout :float 2) ;; rectangle vertex positions
-    (add-to-layout layout :float 3) ;; rectangle vertex colors
-    (add-to-layout layout :float 2) ;; texture coordinates
-    (add-buffer *vao*
-		(make-vertex-buffer #(-0.5 -0.5 1.0 0.0 0.0 0.0 0.0
-				      0.5 -0.5 0.0 1.0 0.0 1.0 0.0
-				      0.5 0.5 0.0 0.0 1.0 1.0 1.0
-				      -0.5 0.5 1.0 1.0 0.0 0.0 1.0))
-		layout))
-  (make-index-buffer
-     #(0 1 2 2 3 0))  
-
-  (setf *shader* (make-shader
-		  "
-#version 330 core
-layout(location=0) in vec4 position;
-layout(location=1) in vec3 color;
-layout(location=2) in vec2 texCoord;
-out vec4 v_Color;
-out vec2 v_TexCoord;
-void main() {
-gl_Position = position;
-v_TexCoord = texCoord;
-v_Color = vec4(color, 0.0);
-}
-" "
-#version 330 core
-in vec4 v_Color;
-in vec2 v_TexCoord;
-layout(location=0) out vec4 color;
-uniform sampler2D u_Texture_1;
-uniform sampler2D u_Texture_2;
-void main() {
-color = texture(u_Texture_1, v_TexCoord);
-}
-"))
-
-  (push (make-texture "wall.png") *textures*)
   (push (make-texture "gold-dollar.png") *textures*)
+  (let* ((font (sdl2-ttf:open-font #p"C:/Users/niwtr/Downloads/source.ttf" 50))
+         (surface (sdl2-ttf:render-utf8-blended font
+                                                "你好，世界"
+                                                255 ;R
+                                                255 ;G
+                                                0 ;B
+                                                0 ;A
+                                                )))
+    (push (make-texture surface) *textures*))
+  (push 
+   (make-texture
+    (sdl2-image:load-image #p"C:\\Users\\niwtr\\quicklisp\\local-projects\\learn-opengl\\assets\\container.jpg")
+    :target :RGBA)
+   *textures*)
 
-  (gl:uniformi (uniform-loc *shader* "u_Texture_1") 0)
-  (gl:uniformi (uniform-loc *shader* "u_Texture_2") 1)
-  
+  (setf *quad* (make-instance 'basic-quad))
+  (set-position *quad* (vector -50.0 -50.0 50.0 -50.0 50.0 50.0 -50.0 50.0))
+  (set-texcoord *quad* (vector 0.0 0.0 1.0 0.0 1.0 1.0 0.0 1.0))
+  (set-texture *quad* (first *textures*))
+)
 
-  (gl-unbind :vertex-array)
-  (gl-unbind :vertex-buffer)
-  (gl-unbind :shader)
-  (gl-unbind :index-buffer)
-  )
+(define-symbol-macro rnd (random 2.0))
+(defun sinv nil (* rnd (* 100 (sin (/ (sdl2:get-ticks) 240)))))
+(defun cosv nil (* rnd (* 200 (cos (/ (sdl2:get-ticks) 240)))))
+(defparameter *g-value-1* 0.0)
+(defparameter *g-value-2* 0.0)
+(defparameter *g-value-3* 0.0)
 
-(define-symbol-macro rnd (random 1.0))
+(capi:define-interface my-scroll-bar ()
+  ()
+  (:panes 
+   (scroll-bar-1
+    capi:scroll-bar
+    :title "brightness"
+    :start 0
+    :end 100
+    :callback 'scroll-bar-1-callback)
+   (scroll-bar-2
+    capi:scroll-bar
+    :title "y position"
+    :start 0
+    :end 600
+    :callback 'scroll-bar-2-callback)
+   (scroll-bar-3
+    capi:scroll-bar
+    :title "x position"
+    :start 0
+    :end 800
+    :callback 'scroll-bar-3-callback)
+   ))
 
+(defun scroll-bar-1-callback (interface self how where)
+  (declare (ignore self how interface))
+  (setf *g-value-1* (float (/ where 100))))
+(defun scroll-bar-2-callback (interface self how where)
+  (declare (ignore self how interface))
+  (setf *g-value-2* (float where)))
+(defun scroll-bar-3-callback (interface self how where)
+  (declare (ignore self how interface))
+  (setf *g-value-3* (float where)))
 
 (defun render-main (window)
   (gl:clear :color-buffer-bit)
-
-  (active-texture 0)
-  (gl-bind (first *textures*))
-  (active-texture 1)
-  (gl-bind (second *textures*))
+  (gl-bind *quad*)  
   
-  (gl-bind *shader*)
-  (gl-bind *vao*)
-  ;; (gl:uniformf
-  ;;  (gl:get-uniform-location
-  ;;   (gl:get-integer :current-program) "u_Color")
-  ;;  red 0.0 0.0 1.0)
+  (let* ((proj (3d-matrices:mortho 0 800 0 600 -1 1))
+         (eye (3d-matrices:meye 4))
+         (trvec (3d-vectors:vec 0 0 0))
+         (view (3d-matrices:nmtranslate eye trvec))
+         (trans (3d-vectors:vec *g-value-3* *g-value-2* 0))
+         (model (3d-matrices:nmtranslate (3d-matrices:meye 4) trans))
+         (mvp (3d-matrices:m* (3d-matrices:m* proj view) model)))
 
+    ;; (set-texcoord *quad* (vector 0.0 0.0 1.0 0.0 1.0 1.0 0.0 1.0))
+    ;; (set-texture *quad* (second *textures*))
+    ;; (set-mvp *quad* (3d-matrices:marr mvp))
+    ;; (draw *quad*)
 
-  (%gl:draw-elements :triangles 6 :unsigned-int 0)
+    ;;(set-texcoord *quad* (vector 0.0 1.0 1.0 1.0 1.0 0.0 0.0 0.0))
+    ;;(set-texture *quad* (second *textures*))
+    (loop for i from 0 to 10
+          do
+            (progn
+              (setf trans (3d-vectors:vec (+ *g-value-3* (sinv)) (+ *g-value-2* (cosv)) 0))
+              (setf model (3d-matrices:nmtranslate (3d-matrices:meye 4) trans))
+              (setf mvp (3d-matrices:m* (3d-matrices:m* proj view) model))
 
-  ;;(gl:draw-arrays :triangles 0 6)
-  (gl:flush)
-  (sdl2:gl-swap-window window))
+              
+              (set-mvp *quad* (3d-matrices:marr mvp))
+              (draw *quad*)))
+    #|
+    (setf trans (3d-vectors:vec (+ *g-value-3* (cosv)) (+ *g-value-2* (sinv)) 0))
+    (setf model (3d-matrices:nmtranslate (3d-matrices:meye 4) trans))
+    (setf mvp (3d-matrices:m* (3d-matrices:m* proj view) model))
+    (set-texture *quad* (first *textures*))
+    (set-mvp *quad* (3d-matrices:marr mvp))
+    (draw *quad*)
+    |#
+    
+    (gl:flush)
+    (sdl2:gl-swap-window window)))
 
 (defun main ()
   (sdl2:with-init (:everything)
+    (sdl2-ttf:init)
+    (sdl2-image:init '(:png :jpg))
     (format t "Using SDL library version: ~D.~D.~D~%"
             sdl2-ffi:+sdl-major-version+
             sdl2-ffi:+sdl-minor-version+
@@ -102,63 +128,28 @@ color = texture(u_Texture_1, v_TexCoord);
       (sdl2:show-window window)
       (sdl2:with-gl-context (gl-context window)
         (sdl2:gl-make-current window gl-context)
-        (sdl2:gl-set-swap-interval 1)
+        (sdl2:gl-set-swap-interval 0)
 	(gl:enable :blend)
 	(gl:blend-func :src-alpha :one-minus-src-alpha)
         ;; Clear to blue
         (gl:clear-color 0.0 0.0 1.0 1.0)
 	
         (declare-shader)
+        
+        ;; (capi:display (make-instance 'my-scroll-bar))
 	;; NOTE the declare-shader creates a context,
 	;; including buffer and vertex array.
+        (format t "Shader compiled, let the hack begin!~%")
 	(let ((red 0.0))
 	  (declare (ignore red))
           (sdl2:with-event-loop (:method :poll)
             (:idle ()
 		   (render-main window))
+            (:mousemotion (:x x :y y :xrel xrel :yrel yrel :state state)
+			  (declare (ignore xrel yrel state))
+			  (setf *g-value-3* x)
+			  (setf *g-value-2* (- 600 y))
+			  )
+
             (:quit () t)))))))
 
-(main)
-(defun declare-shader1 ()
-  ;; create vertex array
-  (setf *vao* (gl:gen-vertex-array))
-  (gl:bind-vertex-array *vao*)
-  ;; create buffer objects
-
-  (make-vertex-buffer #(-0.5 -0.5
-			0.5 -0.5
-			0.5 0.5
-			-0.5 0.5))
- 
-  ;; bind the current array buffer to the *vao*
-  (gl:vertex-attrib-pointer 0 2 :float :false 0 0)  
-  (gl:enable-vertex-attrib-array 0)
-
-  (make-index-buffer
-   #(0 1 2 2 3 0))
-
-  
-  (let* ((vertex-shader
-        "#version 330 core
-layout(location=0) in vec4 position;
-void main() {
-gl_Position = position;
-}")
-	(fragment-shader
-          "#version 330 core
-layout(location=0) out vec4 color;
-uniform vec4 u_Color;
-void main() {
-color = u_Color;
-}")
-	 (program (make-program-from-shader-src vertex-shader fragment-shader)))
-    (gl:use-program program)
-    ;; NOTE the unbind sequence is very important.
-    ;; always unbind vertex array before unbinding the buffers.
-    ;; because every buffer-binding operations are inside the vao state.
-    ;; so unbinding the index buffer before vao will cause the vao captures
-    ;; a null index buffer, causing a segmentation fault when exiting.
-    (gl:bind-vertex-array 0)
-    (gl:bind-buffer :array-buffer 0)
-    (gl:bind-buffer :element-array-buffer 0)
-    ))

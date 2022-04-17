@@ -7,8 +7,12 @@
                :cl-glut
                :sdl2
 	       :sdl2-image
+               :sdl2-ttf
 	       :pngload ;; load png for texture rendering.
 	       :static-vectors
+               :3d-vectors
+               :3d-matrices
+               :trivial-package-local-nicknames
                )
   :components ((:module "src"
                 :components
@@ -24,6 +28,7 @@
 		 (:file "07")
                  (:file "opengl")
 		 (:file "opengl-shader")
+                 (:file "opengl-shader-3d")
 		 )))
   :description ""
   :in-order-to ((test-op (test-op "learn-opengl/tests"))))
